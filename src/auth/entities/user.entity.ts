@@ -7,7 +7,7 @@ export class User {
     email:string;
 
     @Prop({required:true})
-    password:string;
+    password?:string;
 
     @Prop({minlength: 6, required:true})
     name:string;

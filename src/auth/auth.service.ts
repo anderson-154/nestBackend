@@ -1,9 +1,10 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { User } from './entities/user.entity';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-
+import * as bcryptjs from 'bcryptjs';
+import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
@@ -15,19 +16,48 @@ export class AuthService {
 
   async create(createUserDto: CreateUserDto): Promise<User>{    
     try{
-      const newUser = new this.userModel(createUserDto);
+      //desestructurar el createUserDto
+      const {password, ...userData} = createUserDto;
+      //encriptar contraseña
+      const newUser = new this.userModel({
+        password: bcryptjs.hashSync(password, 10),
+        ...userData
+      })
 
-      //encrptar
       //guardar user
       //generar Json WebToken
 
-      return await newUser.save()
+      await newUser.save();
+
+      //quitamos el password para que no se envie y dejamos en el userentity como =password?
+      const {password:_, ...user} = newUser.toJSON();
+
+      return user
     }catch (error){
       if(error.code === 11000){
         throw new BadRequestException(`${createUserDto.email} already exist `);
       }
       throw new InternalServerErrorException('something terrinle happen')
     }
+  }
+
+  async login(loginDto:LoginDto){
+    const {email,password} = loginDto;
+
+    const user = await this.userModel.findOne({email})
+      if(!user){
+        throw new UnauthorizedException('Not valid credentials');
+      }
+
+      if(!bcryptjs.compareSync(password, user.password)){
+        throw new UnauthorizedException('Not valid credentials');
+      }
+
+      const {password:_,...rest} = user.toJSON()
+      return {
+        user: rest,
+        token:'123'
+      }
   }
 
   findAll() {
