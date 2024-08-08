@@ -14,7 +14,4 @@ import { ConfigModule } from '@nestjs/config';
   providers: [],
 })
 export class AppModule {
-  constructor(){
-    console.log(process.env)
-  }
 }
