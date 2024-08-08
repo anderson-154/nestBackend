@@ -1,10 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request } from '@nestjs/common';
 import { AuthService } from './auth.service';
 
 
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { AuthGuard } from './guards/auth.guard';
+import { LoginResponse } from './interfaces/login-response';
+import { User } from './entities/user.entity';
 
 
 
@@ -27,23 +30,37 @@ export class AuthController {
     return this.authService.register( registerDto );
   }
 
+  @UseGuards(AuthGuard)
   @Get()
-  findAll() {
-    return this.authService.findAll();
+  findAll(@Request() req: Request ) {
+    const user = req['user']
+    return user;
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.authService.findOne(+id);
+  @UseGuards(AuthGuard)
+  @Get('check-token')
+  checkToken(@Request() req: Request): LoginResponse{
+    const user = req['user'] as User
+
+    return {
+      user,
+      token: this.authService.getJWT({id: user._id})
+    }
+
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: CreateUserDto) {
-    return this.authService.update(+id, updateUserDto);
-  }
+  //@Get(':id')
+ // findOne(@Param('id') id: string) {
+ //   return this.authService.findOne(+id);
+  //}
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.authService.remove(+id);
-  }
+ // @Patch(':id')
+ // update(@Param('id') id: string, @Body() updateUserDto: CreateUserDto) {
+  //  return this.authService.update(+id, updateUserDto);
+ // }
+
+  //@Delete(':id')
+  //remove(@Param('id') id: string) {
+  //  return this.authService.remove(+id);
+  //}
 }
