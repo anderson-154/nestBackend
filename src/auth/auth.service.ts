@@ -1,13 +1,16 @@
 import { BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
+
 import { User } from './entities/user.entity';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcryptjs from 'bcryptjs';
-import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
 import { JwtPayload } from './interfaces/jwt-payload';
 
+import { LoginResponse } from './interfaces/login-response';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class AuthService {
@@ -15,7 +18,7 @@ export class AuthService {
   constructor(
     @InjectModel(User.name) 
       private userModel: Model<User>,
-      private jwtService: JwtService
+      private jwtService: JwtService,
     ) {}
 
 
@@ -27,26 +30,34 @@ export class AuthService {
       const newUser = new this.userModel({
         password: bcryptjs.hashSync(password, 10),
         ...userData
-      })
-
-      //guardar user
-      //generar Json WebToken
-
+      });
       await newUser.save();
 
       //quitamos el password para que no se envie y dejamos en el userentity como =password?
       const {password:_, ...user} = newUser.toJSON();
 
-      return user
+      return user;
     }catch (error){
       if(error.code === 11000){
         throw new BadRequestException(`${createUserDto.email} already exist `);
       }
-      throw new InternalServerErrorException('something terrinle happen')
+      console.error('Error in create method:', error); // Agrega este registro de error
+      throw new InternalServerErrorException('something terrible happen')
     }
   }
 
-  async login(loginDto:LoginDto){
+  async register(registerDto:RegisterDto): Promise<LoginResponse>{
+      
+    const user = await this.create(registerDto);
+    console.log(user)
+      return{
+        user: user,
+        token: this.getJWT({id: user._id})
+      }
+      
+  }
+
+  async login(loginDto:LoginDto): Promise<LoginResponse>{
     const {email,password} = loginDto;
 
     const user = await this.userModel.findOne({email})
@@ -65,8 +76,8 @@ export class AuthService {
       }
   }
 
-  findAll() {
-    return `This action returns all auth`;
+  findAll(): Promise<User[]> {
+    return this.userModel.find();
   }
 
   findOne(id: number) {
